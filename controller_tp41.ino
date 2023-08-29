@@ -142,6 +142,8 @@ int sw_lfoDestLo;
 // This is apparently needed in order to get Serial.println() to behave more usefully.
 String str;
 
+uint8_t firstTime = 2;
+
 
 //////////////////////////////////// functions ///////////////////////////////////////
 
@@ -224,22 +226,24 @@ void loop() {
 
   // 
 
-  // lol debug
-  asdfyourmom();
+  // Debounce pots and send MIDI messages if appropriate.
+  potsDebounce();
 
 }
 
 
 
 
-void lolTestCrap() {
+void midiTx(uint16_t txNumber, uint16_t txValue) {
 
   // Strategy: MIDI CC messages.
   // Advantages: simple, easy, fast.
   // Disadvantages: less flexible, only 7-bit resolution.
-  uint8_t controlNumber = 0; // this'll go with each slider, I guess hardcoded for now
-  uint8_t controlValue = 0; // fill this in with the 
+  uint8_t controlNumber = txNumber; // this'll go with each slider, I guess hardcoded for now
+  uint8_t controlValue = ((txValue >> 3) & 0x7F); // convert from 10 to 7 bits
   MIDI.sendControlChange(controlNumber, controlValue, midiChannel);
+
+  return; // lol debug: We'll just use CC messages for today even if it's a noncompliant usage.
 
   // Strategy: MIDI NRPN messages.
   // Advantages: 14-bit resolution.
@@ -283,6 +287,9 @@ void muxRead() {
     digitalWrite(MUX_C, 0);
     
     digitalWrite(MUX7_X, (led[1] ? 1 : 0));
+
+    // Suppress a big fat flood of MIDI messages at boot.
+    if (firstTime) { firstTime--; }
     break;
 
   case 1:
@@ -424,7 +431,7 @@ void muxRead() {
   if (midiChannel == 0) { midiChannel = 1; }
 }
 
-void asdfyourmom(void) {
+void potsDebounce(void) {
   // Go through each pot. If it's moved far enough since the last time, do the thing.
   for (uint8_t p = 0; p < NUM_POTS; p++) {
     if ((pots[p][POT_VALUE_OLD] + potThreshold < pots[p][POT_VALUE_NEW]) ||
@@ -433,11 +440,12 @@ void asdfyourmom(void) {
           // todo: Divide it down (if necessary)
           // todo: Add it to the queue or otherwise mark it somehow.
 
-          Serial.println(str + "pot " + p + " turn, new value " + pots[p][POT_VALUE_NEW] + " ch" + midiChannel);
+          if (!firstTime) {
+            Serial.println(str + "ch" + midiChannel + ", pot " + p + " turn, new value " + pots[p][POT_VALUE_NEW]);
+            midiTx(p, pots[p][POT_VALUE_NEW]);
+          }
         }
   }
-
-
 }
 
 
