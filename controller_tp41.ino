@@ -72,7 +72,6 @@ const int ChSel8 = 32;
 int midiChannel;
 
 
-
 // Multiplexers
 
 const int MUX_A = 8;
@@ -96,8 +95,6 @@ const int LED_MEM_ACTIVE = 11;
 const int LED_MEM_STORE = 12;
 
 
-
-
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
 
 
@@ -117,8 +114,6 @@ Bounce* btns[NUM_BUTTONS];
 const int potThreshold = 2; // Threshold for the pretty basic algo we use to "debounce" the pots.
 
 int pots[NUM_POT_LABELS][2]; // Note: use POT_VALUE_OLD/NEW for the second index
-
-
 
 
 // Switch input states. For 3-way switches, both up and down have states.
@@ -148,7 +143,6 @@ uint8_t firstTime = 2;
 //////////////////////////////////// functions ///////////////////////////////////////
 
 
-
 void setup() {
 
   // Get serial set up
@@ -157,7 +151,6 @@ void setup() {
 
   // Get MIDI set up
   MIDI.begin(MIDI_CHANNEL_OMNI); // todo: verify that this is even necessary
-
 
   // Get muxes set up
   pinMode(MUX_A, OUTPUT);
@@ -203,13 +196,7 @@ void setup() {
   pinMode(ChSel2, INPUT_PULLUP);
   pinMode(ChSel4, INPUT_PULLUP);
   pinMode(ChSel8, INPUT_PULLUP);
-
-
-
 }
-
-
-
 
 
 
@@ -217,18 +204,14 @@ void loop() {
 
   // Read pots and stuff.
   if (millis() - prevMuxTimer > muxInterval) {
-  prevMuxTimer = millis();
-  muxRead();
-}
+    prevMuxTimer = millis();
+    muxRead();
+  }
 
   // Read/debounce buttons?
-  // 
-
-  // 
 
   // Debounce pots and send MIDI messages if appropriate.
   potsDebounce();
-
 }
 
 
@@ -253,8 +236,6 @@ void midiTx(uint16_t txNumber, uint16_t txValue) {
   MIDI.beginNrpn(nrpnNumber, midiChannel);
   MIDI.sendNrpnValue(nrpnValue, midiChannel);
   MIDI.endNrpn(midiChannel);
-  
-
 }
 
 // Read pots and switches, write LEDs
@@ -436,15 +417,15 @@ void potsDebounce(void) {
   for (uint8_t p = 0; p < NUM_POTS; p++) {
     if ((pots[p][POT_VALUE_OLD] + potThreshold < pots[p][POT_VALUE_NEW]) ||
         (pots[p][POT_VALUE_OLD] - potThreshold > pots[p][POT_VALUE_NEW])) {
-          pots[p][POT_VALUE_OLD] = pots[p][POT_VALUE_NEW];
-          // todo: Divide it down (if necessary)
-          // todo: Add it to the queue or otherwise mark it somehow.
+      pots[p][POT_VALUE_OLD] = pots[p][POT_VALUE_NEW];
+      // todo: Divide it down (if necessary)
+      // todo: Add it to the queue or otherwise mark it somehow.
 
-          if (!firstTime) {
-            Serial.println(str + "ch" + midiChannel + ", pot " + p + " turn, new value " + pots[p][POT_VALUE_NEW]);
-            midiTx(p, pots[p][POT_VALUE_NEW]);
-          }
-        }
+      if (!firstTime) {
+        Serial.println(str + "ch" + midiChannel + ", pot " + p + " turn, new value " + pots[p][POT_VALUE_NEW]);
+        midiTx(p, pots[p][POT_VALUE_NEW]);
+      }
+    }
   }
 }
 
