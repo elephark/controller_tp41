@@ -2,6 +2,8 @@
 // Hardware-wise, this has a couple implications:
 // 1. The audio output board and 1/4" jacks become superfluous and can be omitted if desired.
 // 2. The DIN jack used for MIDI in needs to be rewired if it's going to be used for MIDI output.
+//    What I actually ended up doing was throwing another DIN jack and a couple resistors on a
+//    breadboard and running wires out. Less intrusive and more reversible.
 //    USB could be used for MIDI instead, if the host supports it.
 
 
@@ -72,12 +74,12 @@ const int ChSel8 = 32;
 int midiChannel;
 
 
-// Multiplexers
-
+// Mux control pins, shared among all mux chips.
 const int MUX_A = 8;
 const int MUX_B = 9;
 const int MUX_C = 10;
 
+// Mux X (common) pins, one for each mux chip.
 const int MUX0_X = A0; // pots
 const int MUX1_X = A1; // pots
 const int MUX2_X = A2; // pots
@@ -87,31 +89,33 @@ const int MUX5_X = 6;  // switches
 const int MUX6_X = 22; // mem buttons
 const int MUX7_X = 23; // LED outputs
 
-
+// States of muxed LEDs.
 int led[NUM_LEDS] = {0,0,0,0,0,0,0,0};
 
 // There are also two other LEDs that don't go through the mux.
 const int LED_MEM_ACTIVE = 11;
 const int LED_MEM_STORE = 12;
 
-
-MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
-
-
 // States of non-muxed LEDs.
 int memActive = 0;
 int memStore = 0;
+
+// Debounced button states.
+Bounce* btns[NUM_BUTTONS];
+
+
+MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
+
 
 unsigned long muxInterval = 4; // Time in ms between mux reads. Glitches happen if this is zero.
 unsigned long prevMuxTimer;
 int curMuxCh = 0;
 
-Bounce* btns[NUM_BUTTONS];
-
 
 // todo: add crap here
 
-const int potThreshold = 2; // Threshold for the pretty basic algo we use to "debounce" the pots.
+// Threshold for the pretty basic algo we use to "debounce" the pots.
+const int potThreshold = 2;
 
 int pots[NUM_POT_LABELS][2]; // Note: use POT_VALUE_OLD/NEW for the second index
 
@@ -140,19 +144,19 @@ String str;
 uint8_t firstTime = 2;
 
 
-//////////////////////////////////// functions ///////////////////////////////////////
+//////////////////////////////////// Functions ///////////////////////////////////////
 
 
 void setup() {
 
-  // Get serial set up
+  // Get serial set up.
   Serial.begin(9600);
   Serial.println("controller_tp41 serial is up.");
 
-  // Get MIDI set up
+  // Get MIDI set up.
   MIDI.begin(MIDI_CHANNEL_OMNI); // todo: verify that this is even necessary
 
-  // Get muxes set up
+  // Get muxes set up.
   pinMode(MUX_A, OUTPUT);
   pinMode(MUX_B, OUTPUT);
   pinMode(MUX_C, OUTPUT);
@@ -161,6 +165,10 @@ void setup() {
   digitalWrite(MUX_B, 0);
   digitalWrite(MUX_C, 0);
 
+  pinMode(MUX0_X, INPUT_DISABLE); // Prevent weird read issues with the ADC. Needed on Teensy 4.1.
+  pinMode(MUX1_X, INPUT_DISABLE);
+  pinMode(MUX2_X, INPUT_DISABLE);
+  pinMode(MUX3_X, INPUT_DISABLE);
   pinMode(MUX4_X, INPUT_PULLUP);
   pinMode(MUX5_X, INPUT_PULLUP);
   pinMode(MUX6_X, INPUT_PULLUP);
@@ -168,30 +176,24 @@ void setup() {
   
   digitalWrite(MUX7_X, 0);
 
-  // Set up debouncing
+  // Set up debouncing.
   for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
     btns[i] = new Bounce();
     btns[i]->attach(MUX6_X, INPUT_PULLUP);
     btns[i]->interval(20);
   }
 
+  // Get non-muxed LEDs set up.
   pinMode(LED_MEM_ACTIVE, OUTPUT);
   pinMode(LED_MEM_STORE, OUTPUT);
 
   digitalWrite(LED_MEM_ACTIVE, 0);
   digitalWrite(LED_MEM_STORE, 0);
 
-// lol debug stuff
+  // Smooth out the analog reads a bit.
   analogReadAveraging(32);
 
-  // This seems to be necessary on the Teensy 4.1 to prevent weird read issues.
-  pinMode(14, INPUT_DISABLE);
-  pinMode(15, INPUT_DISABLE);
-  pinMode(16, INPUT_DISABLE);
-  pinMode(17, INPUT_DISABLE);
-
-
-  // Set up MIDI channel select pins. Note that this requires a Teensy 4.1 (ie not a 4.0).
+  // Set up MIDI channel select pins. This means we need a Teensy 4.1; a 4.0 lacks these pins.
   pinMode(ChSel1, INPUT_PULLUP);
   pinMode(ChSel2, INPUT_PULLUP);
   pinMode(ChSel4, INPUT_PULLUP);
@@ -428,6 +430,3 @@ void potsDebounce(void) {
     }
   }
 }
-
-
-
