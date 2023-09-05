@@ -144,6 +144,9 @@ String str;
 uint8_t firstTime = 2;
 
 
+void muxRead(void);
+void potsDebounce(void);
+
 //////////////////////////////////// Functions ///////////////////////////////////////
 
 
@@ -241,7 +244,7 @@ void midiTx(uint16_t txNumber, uint16_t txValue) {
 }
 
 // Read pots and switches, write LEDs
-void muxRead() {
+void muxRead(void) {
   // I feel like there might be a nicer way to do this.
 
   if (false) // Something like this?
