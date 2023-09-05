@@ -8,10 +8,10 @@
 
 
 // #include <SPI.h>
-#include <Bounce2.h> // for buttons
+#include <Bounce2.h>    // for buttons
 // #include <Math.h>    // for uh something I'm sure
-#include <MIDI.h>    // for MIDI (might want to also add USB midi later)
-
+#include <MIDI.h>       // for MIDI over serial
+#include <usb_midi.h>   // for MIDI over USB
 
 // todo: comment
 #define NUM_LEDS        8
@@ -157,7 +157,8 @@ void setup() {
   Serial.println("controller_tp41 serial is up.");
 
   // Get MIDI set up.
-  MIDI.begin(MIDI_CHANNEL_OMNI); // todo: verify that this is even necessary
+  MIDI.begin(MIDI_CHANNEL_OMNI);  // todo: verify that this is even necessary
+  usbMIDI.begin();                // todo: see above
 
   // Get muxes set up.
   pinMode(MUX_A, OUTPUT);
@@ -230,6 +231,7 @@ void midiTx(uint16_t txNumber, uint16_t txValue) {
   uint8_t controlNumber = txNumber; // this'll go with each slider, I guess hardcoded for now
   uint8_t controlValue = ((txValue >> 3) & 0x7F); // convert from 10 to 7 bits
   MIDI.sendControlChange(controlNumber, controlValue, midiChannel);
+  usbMIDI.sendControlChange(controlNumber, controlValue, midiChannel);
 
   return; // lol debug: We'll just use CC messages for today even if it's a noncompliant usage.
 
